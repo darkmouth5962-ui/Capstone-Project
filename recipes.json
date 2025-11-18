@@ -3,42 +3,132 @@
     {
       "id": 1,
       "name": "Grilled Cheese Sandwich",
-      "ingredients": ["bread", "cheese", "butter"]
+      "ingredients": ["bread", "cheese", "butter"],
+      "prep_time": 2,
+      "cook_time": 5,
+      "total_time": 7,
+      "servings": 1,
+      "skill_level": "beginner",
+      "cuisine": "American",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["pan", "spatula"]
     },
     {
       "id": 2,
       "name": "Scrambled Eggs",
-      "ingredients": ["eggs", "butter", "milk", "salt", "pepper"]
+      "ingredients": ["eggs", "butter", "milk", "salt", "pepper"],
+      "prep_time": 2,
+      "cook_time": 5,
+      "total_time": 7,
+      "servings": 2,
+      "skill_level": "beginner",
+      "cuisine": "American",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["pan", "whisk", "bowl"]
     },
     {
       "id": 3,
       "name": "Spaghetti Carbonara",
-      "ingredients": ["spaghetti", "eggs", "parmesan cheese", "bacon", "black pepper"]
+      "ingredients": ["spaghetti", "eggs", "parmesan cheese", "bacon", "black pepper"],
+      "prep_time": 10,
+      "cook_time": 20,
+      "total_time": 30,
+      "servings": 4,
+      "skill_level": "intermediate",
+      "cuisine": "Italian",
+      "dietary_tags": [],
+      "equipment": ["pot", "pan", "colander"]
     },
     {
       "id": 4,
       "name": "Simple Salad",
-      "ingredients": ["lettuce", "tomatoes", "cucumber", "olive oil", "salt"]
+      "ingredients": ["lettuce", "tomatoes", "cucumber", "olive oil", "salt"],
+      "prep_time": 10,
+      "cook_time": 0,
+      "total_time": 10,
+      "servings": 2,
+      "skill_level": "beginner",
+      "cuisine": "Mediterranean",
+      "dietary_tags": ["vegetarian", "vegan", "gluten-free"],
+      "equipment": ["bowl", "knife"]
     },
     {
       "id": 5,
       "name": "Chicken Tacos",
-      "ingredients": ["chicken", "tortillas", "lettuce", "cheese", "sour cream"]
+      "ingredients": ["chicken", "tortillas", "lettuce", "cheese", "sour cream"],
+      "prep_time": 10,
+      "cook_time": 15,
+      "total_time": 25,
+      "servings": 4,
+      "skill_level": "beginner",
+      "cuisine": "Mexican",
+      "dietary_tags": [],
+      "equipment": ["pan", "knife"]
     },
     {
       "id": 6,
       "name": "Tomato Soup",
-      "ingredients": ["tomatoes", "onion", "garlic", "broth", "cream"]
+      "ingredients": ["tomatoes", "onion", "garlic", "broth", "cream"],
+      "prep_time": 10,
+      "cook_time": 30,
+      "total_time": 40,
+      "servings": 4,
+      "skill_level": "beginner",
+      "cuisine": "American",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["pot", "blender"]
     },
     {
       "id": 7,
       "name": "Fried Rice",
-      "ingredients": ["rice", "eggs", "soy sauce", "vegetables", "oil"]
+      "ingredients": ["rice", "eggs", "soy sauce", "vegetables", "oil"],
+      "prep_time": 10,
+      "cook_time": 15,
+      "total_time": 25,
+      "servings": 3,
+      "skill_level": "intermediate",
+      "cuisine": "Asian",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["wok", "spatula"]
     },
     {
       "id": 8,
       "name": "Pasta with Butter",
-      "ingredients": ["pasta", "butter", "parmesan cheese", "salt"]
+      "ingredients": ["pasta", "butter", "parmesan cheese", "salt"],
+      "prep_time": 5,
+      "cook_time": 12,
+      "total_time": 17,
+      "servings": 2,
+      "skill_level": "beginner",
+      "cuisine": "Italian",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["pot", "colander"]
+    },
+    {
+      "id": 9,
+      "name": "Veggie Stir-Fry",
+      "ingredients": ["broccoli", "carrots", "bell peppers", "soy sauce", "garlic", "oil"],
+      "prep_time": 15,
+      "cook_time": 10,
+      "total_time": 25,
+      "servings": 3,
+      "skill_level": "beginner",
+      "cuisine": "Asian",
+      "dietary_tags": ["vegetarian", "vegan"],
+      "equipment": ["wok", "knife"]
+    },
+    {
+      "id": 10,
+      "name": "Pancakes",
+      "ingredients": ["flour", "eggs", "milk", "butter", "sugar", "baking powder"],
+      "prep_time": 10,
+      "cook_time": 15,
+      "total_time": 25,
+      "servings": 4,
+      "skill_level": "beginner",
+      "cuisine": "American",
+      "dietary_tags": ["vegetarian"],
+      "equipment": ["pan", "bowl", "whisk", "spatula"]
     }
   ]
 }
