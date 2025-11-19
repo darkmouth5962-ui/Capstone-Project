@@ -8,7 +8,7 @@ def build_master_ingredient_list(recipes):
     
     for recipe in recipes:
         for ingredient in recipe.get('ingredients', []):
-            # Normalize to lowercase
+            # normalize to lowercase
             master_ingredients.add(ingredient.lower().strip())
     
     return master_ingredients
@@ -88,11 +88,11 @@ def parse_ingredients(raw_input, master_ingredients=None, interactive=True):
                 # exact match, no questions asked
                 cleaned.append(match_result['match'])
                 fuzzy_report['exact_matches'].append(raw_ing)
-                print(f"✓ {raw_ing}")
+                print(f"{raw_ing}")
             
             elif match_result['needs_confirmation'] and interactive:
                 # fuzzy match, ask for confirmation
-                print(f"❓ '{raw_ing}' → Did you mean '{match_result['match']}'? (y/n)")
+                print(f"'{raw_ing}' → Did you mean '{match_result['match']}'? (y/n)")
                 confirmation = input("   > ").strip().lower()
                 
                 if confirmation == 'y' or confirmation == 'yes':
@@ -129,7 +129,7 @@ def parse_ingredients(raw_input, master_ingredients=None, interactive=True):
                 keep = input("   > ").strip().lower()
                 if keep == 'y' or keep == 'yes':
                     cleaned.append(raw_ing)
-                    print(f"   ✓ Added '{raw_ing}' as-is")
+                    print(f"Added '{raw_ing}' as-is")
     
     print("-" * 70)
     
@@ -144,4 +144,4 @@ def display_fuzzy_summary(fuzzy_report, final_ingredients):
         print(f"Exact matches: {len(fuzzy_report['exact_matches'])}")
         print(f"Fuzzy matches: {len(fuzzy_report['fuzzy_matches'])}")
         print(f"Unmatched: {len(fuzzy_report['unmatched'])}")
-        print(f"Final ingredient list: {', '.join(user_ing)}")
+        print(f"Final ingredient list: {', '.join(final_ingredients)}")
