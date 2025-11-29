@@ -5,14 +5,28 @@ from services.ingredient_parser import (
 )
 from services.recipe_matcher import (
     load_recipes,
-    search_recipes,
     find_partial_matches,
     display_results
 )
 from services.suggestion_engine import (
-    generate_shopping_suggestions,
     display_suggestions
 )
+
+# CQRS+EDA Architecture Integration
+from commands.command_handlers import (
+    handle_create_user,
+    handle_add_ingredient,
+    handle_log_recipe_search
+)
+from queries.query_handlers import (
+    query_recipes_by_ingredients,
+    query_shopping_suggestions
+)
+from consumers.event_consumers import setup_event_consumers
+import time
+
+# session user ID (created at startup)
+_session_user_id = None
 
 def get_user_filters():
     # get filters
@@ -37,14 +51,16 @@ def get_user_filters():
     cuisine = input("Cuisine type (Italian/American/Asian/etc): ").strip()
     if cuisine:
         filters['cuisine'] = cuisine
+    
+    return filters
 
 def handle_no_matches(user_ing, recipes, filters, master_ingredients):
     print("\n" + "=" * 70)
     print("No exact matches found - let's find some options!")
     print("=" * 70)
     
-    # Generate suggestions with no matches strategy
-    suggestions = generate_shopping_suggestions(user_ing, recipes, filters, top_n=5, has_matches=False, exclude_ids=set())
+    # Generate suggestions - NOW USING QUERY
+    suggestions = query_shopping_suggestions(_session_user_id, filters, top_n=5)
     
     # Find any partial matches at low threshold
     partial_matches = find_partial_matches(user_ing, recipes, filters, min_match_threshold=10, exclude_ids=set())
@@ -66,12 +82,19 @@ def handle_no_matches(user_ing, recipes, filters, master_ingredients):
                 new_ing_parsed, _ = parse_ingredients(new_ingredient, master_ingredients, interactive=True)
                 
                 if new_ing_parsed:
+                    # ADD INGREDIENT USING COMMAND
+                    for ing in new_ing_parsed:
+                        handle_add_ingredient(_session_user_id, ing, 1.0)
+                    
                     user_ing.extend(new_ing_parsed)
                     print(f"\nAdded '{', '.join(new_ing_parsed)}' to your ingredients!")
                     
-                    # Re-run search
+                    # Wait for event processing
+                    time.sleep(0.1)
+                    
+                    # Re-run search - NOW USING QUERY
                     updated_input = ", ".join(user_ing)
-                    results = search_recipes(user_ing, recipes, filters)
+                    results = query_recipes_by_ingredients(_session_user_id, user_ing, filters)
                     display_results(results, updated_input, filters)
 
 def handle_partial_matches(user_ing, recipes, filters, shown_recipe_ids):
@@ -84,13 +107,29 @@ def handle_partial_matches(user_ing, recipes, filters, shown_recipe_ids):
         show_suggestions = input("See shopping suggestions? (y/n): ").strip().lower()
         
         if show_suggestions == 'y':
-            # pass has_matches=True since we have results
-            suggestions = generate_shopping_suggestions(user_ing, recipes, filters, top_n=5, has_matches=True, exclude_ids=shown_recipe_ids)
+            # Generate suggestions - NOW USING QUERY
+            suggestions = query_shopping_suggestions(_session_user_id, filters, top_n=5)
             
             partial_matches = find_partial_matches(user_ing, recipes, filters, min_match_threshold=50, exclude_ids=shown_recipe_ids)
             display_suggestions(suggestions, partial_matches)
 
 def main():
+    global _session_user_id
+    
+    # CQRS+EDA SETUP: initialize event consumers
+    setup_event_consumers()
+    
+    # CQRS+EDA SETUP: create session user (COMMAND)
+    user_result = handle_create_user(
+        username=f"session_{int(time.time())}",
+        password="temp",
+        dietary_restrictions=[]
+    )
+    _session_user_id = user_result['user_id']
+    
+    # time for event processing
+    time.sleep(0.05)
+    
     # main function with ingredient input, filter application, recipe search and matching, display and now suggestions.
     
     # load recipes
@@ -119,10 +158,20 @@ def main():
     # show fuzzy match summary if any corrections were made
     display_fuzzy_summary(fuzzy_report, user_ing)
 
+    # CQRS+EDA: add ingredients to pantry using COMMANDS
+    for ingredient in user_ing:
+        handle_add_ingredient(_session_user_id, ingredient, 1.0) #sample amount
+    
+    # wait for event processing
+    time.sleep(0.1)
+
     filters = get_user_filters()
 
-    # search
-    results = search_recipes(user_ing, recipes, filters)
+    # search - QUERY instead of search_recipes
+    results = query_recipes_by_ingredients(user_ing, filters)
+    
+    # CQRS+EDA: log search for analytics
+    handle_log_recipe_search(_session_user_id, user_ing, filters, len(results))
 
     # display results
     display_results(results, user_input, filters)
