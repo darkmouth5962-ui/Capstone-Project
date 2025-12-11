@@ -2,6 +2,7 @@
 # Queries (GET) go to query handlers
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from commands.command_handlers import (
     handle_create_user,
     handle_update_user_profile,
@@ -23,6 +24,8 @@ from queries.query_handlers import (
 from consumers.event_consumers import setup_event_consumers
 
 app = Flask(__name__)
+# enable CORS for all routes - allow any origin for development
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # initialize event consumers
 setup_event_consumers()
@@ -124,10 +127,11 @@ def search_recipes():
     filters = data.get('filters', {})
     
     # perform query
-    results = query_recipes_by_ingredients(user_id, ingredient_names, filters)
+    results = query_recipes_by_ingredients(ingredient_names, filters)
     
     # log the search asynchronously
-    handle_log_recipe_search(user_id, ingredient_names, filters, len(results))
+    if user_id:
+        handle_log_recipe_search(user_id, ingredient_names, filters, len(results))
     
     return jsonify({
         'results': results,

@@ -1,2 +1,4 @@
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.21.1
+flask
+flask-cors==4.0.0

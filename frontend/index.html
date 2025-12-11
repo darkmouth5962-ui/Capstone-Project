@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartFridge - Recipe Finder</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Karla:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #FDF8F3;
+            --terracotta: #D97642;
+            --sage: #8FA68E;
+            --charcoal: #2D3142;
+            --warm-white: #FFFBF5;
+            --shadow: rgba(45, 49, 66, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Karla', sans-serif;
+            background: linear-gradient(135deg, var(--cream) 0%, var(--warm-white) 100%);
+            color: var(--charcoal);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 4.5rem;
+            font-weight: 900;
+            color: var(--terracotta);
+            margin-bottom: 10px;
+            letter-spacing: -2px;
+            text-shadow: 3px 3px 0 rgba(0,0,0,0.05);
+        }
+
+        .tagline {
+            font-size: 1.2rem;
+            color: var(--sage);
+            font-style: italic;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px var(--shadow);
+            border: 3px solid var(--cream);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--terracotta), var(--sage));
+            opacity: 0.6;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: var(--terracotta);
+            font-weight: 700;
+        }
+
+        .ingredient-input-section {
+            margin-bottom: 25px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid var(--cream);
+            border-radius: 12px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--warm-white);
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--terracotta);
+            box-shadow: 0 0 0 3px rgba(217, 118, 66, 0.1);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Karla', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: var(--terracotta);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #c65a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(217, 118, 66, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--sage);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7a9176;
+            transform: translateY(-2px);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+        }
+
+        .ingredient-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .chip {
+            background: var(--sage);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .chip button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .chip button:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .filters-section {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid var(--cream);
+        }
+
+        .filter-group {
+            margin-bottom: 15px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--charcoal);
+            font-size: 0.9rem;
+        }
+
+        .recipe-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 2px solid var(--cream);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .recipe-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px var(--shadow);
+            border-color: var(--terracotta);
+        }
+
+        .recipe-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .recipe-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            color: var(--charcoal);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .match-badge {
+            background: var(--terracotta);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1rem;
+            white-space: nowrap;
+        }
+
+        .recipe-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--cream);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sage), var(--terracotta));
+            border-radius: 10px;
+            transition: width 0.6s ease-out;
+        }
+
+        .ingredient-lists {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .ingredient-list h4 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--sage);
+            font-weight: 600;
+        }
+
+        .ingredient-list ul {
+            list-style: none;
+        }
+
+        .ingredient-list li {
+            padding: 4px 0;
+            font-size: 0.9rem;
+        }
+
+        .ingredient-list li::before {
+            content: "•";
+            margin-right: 8px;
+            color: var(--terracotta);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .suggestions-panel {
+            background: linear-gradient(135deg, var(--sage), #7a9176);
+            color: white;
+            margin-top: 20px;
+        }
+
+        .suggestions-panel h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .suggestion-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .suggestion-item strong {
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .dietary-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: var(--sage);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--sage);
+            font-size: 1.2rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--cream);
+            border-top-color: var(--terracotta);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const API_URL = 'https://automatic-winner-5gp6gg77j9gwc47qx-5000.app.github.dev/api'; //NEEDS TO BE CHANGED TO LOCALHOST AFTER DEVELOPMENT
+
+        function App() {
+            const [userId, setUserId] = useState(null);
+            const [ingredients, setIngredients] = useState([]);
+            const [currentIngredient, setCurrentIngredient] = useState('');
+            const [recipes, setRecipes] = useState([]);
+            const [suggestions, setSuggestions] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [filters, setFilters] = useState({
+                max_time: '',
+                skill_level: '',
+                dietary_tags: '',
+                cuisine: ''
+            });
+
+            useEffect(() => {
+                // Create a user on mount
+                console.log('Creating user...');
+                fetch(`${API_URL}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: `user_${Date.now()}`,
+                        password: 'demo',
+                        dietary_restrictions: []
+                    })
+                })
+                .then(res => {
+                    console.log('User creation response:', res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('User data:', data);
+                    if (data.success) {
+                        setUserId(data.user_id);
+                        console.log('User ID set:', data.user_id);
+                    } else {
+                        setError('Failed to create user: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error creating user:', err);
+                    setError('Cannot connect to backend. Is it running on http://localhost:5000?');
+                });
+            }, []);
+
+            const addIngredient = () => {
+                if (!userId) {
+                    setError('Still connecting to backend... please wait a moment');
+                    return;
+                }
+                
+                if (currentIngredient.trim()) {
+                    const ing = currentIngredient.trim().toLowerCase();
+                    
+                    console.log('Adding ingredient:', ing);
+                    fetch(`${API_URL}/users/${userId}/ingredients`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ingredient_name: ing,
+                            amount: 1.0
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log('Add ingredient response:', data);
+                        if (data.success) {
+                            setIngredients([...ingredients, ing]);
+                            setCurrentIngredient('');
+                            setError(null);
+                        } else {
+                            setError('Failed to add ingredient: ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error adding ingredient:', err);
+                        setError('Network error. Check if backend is running.');
+                    });
+                }
+            };
+
+            const removeIngredient = (ing) => {
+                setIngredients(ingredients.filter(i => i !== ing));
+            };
+
+            const searchRecipes = () => {
+                if (ingredients.length === 0) return;
+                
+                setLoading(true);
+                
+                const searchFilters = {};
+                if (filters.max_time) searchFilters.max_time = parseInt(filters.max_time);
+                if (filters.skill_level) searchFilters.skill_level = filters.skill_level;
+                if (filters.dietary_tags) searchFilters.dietary_tags = [filters.dietary_tags];
+                if (filters.cuisine) searchFilters.cuisine = filters.cuisine;
+
+                fetch(`${API_URL}/recipes/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        ingredient_names: ingredients,
+                        filters: searchFilters
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    setRecipes(data.results || []);
+                    setLoading(false);
+                    
+                    // Get suggestions if we have few matches
+                    if (userId && data.results.length < 3) {
+                        fetch(`${API_URL}/users/${userId}/suggestions?max_suggestions=5`)
+                            .then(res => res.json())
+                            .then(sugData => setSuggestions(sugData.suggestions || []));
+                    }
+                });
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter') {
+                    addIngredient();
+                }
+            };
+
+            return (
+                <div className="app-container">
+                    <header>
+                        <h1>SmartFridge</h1>
+                        <div className="tagline">Turn what you have into what you'll love</div>
+                        {error && (
+                            <div style={{
+                                background: '#fee',
+                                color: '#c33',
+                                padding: '15px',
+                                borderRadius: '10px',
+                                marginTop: '20px',
+                                border: '2px solid #fcc'
+                            }}>
+                                ⚠️ {error}
+                            </div>
+                        )}
+                        {!userId && !error && (
+                            <div style={{
+                                background: '#fef9e7',
+                                color: '#856404',
+                                padding: '15px',
+                                borderRadius: '10px',
+                                marginTop: '20px',
+                                border: '2px solid #ffeaa7'
+                            }}>
+                                🔄 Connecting to backend...
+                            </div>
+                        )}
+                    </header>
+
+                    <div className="main-content">
+                        <div className="panel">
+                            <h2>Your Kitchen</h2>
+                            
+                            <div className="ingredient-input-section">
+                                <div className="input-group">
+                                    <input
+                                        type="text"
+                                        value={currentIngredient}
+                                        onChange={(e) => setCurrentIngredient(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Add an ingredient..."
+                                    />
+                                    <button className="btn-primary" onClick={addIngredient}>
+                                        Add
+                                    </button>
+                                </div>
+                                
+                                <div className="ingredient-chips">
+                                    {ingredients.map((ing, idx) => (
+                                        <div key={idx} className="chip">
+                                            {ing}
+                                            <button onClick={() => removeIngredient(ing)}>×</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button 
+                                className="btn-secondary" 
+                                onClick={searchRecipes}
+                                disabled={ingredients.length === 0}
+                                style={{width: '100%'}}
+                            >
+                                🔍 Find Recipes
+                            </button>
+
+                            <div className="filters-section">
+                                <h3 style={{fontSize: '1.2rem', marginBottom: '15px'}}>Filters</h3>
+                                
+                                <div className="filter-group">
+                                    <label>Max Cook Time (min)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., 30"
+                                        value={filters.max_time}
+                                        onChange={(e) => setFilters({...filters, max_time: e.target.value})}
+                                    />
+                                </div>
+
+                                <div className="filter-group">
+                                    <label>Skill Level</label>
+                                    <select
+                                        value={filters.skill_level}
+                                        onChange={(e) => setFilters({...filters, skill_level: e.target.value})}
+                                    >
+                                        <option value="">Any</option>
+                                        <option value="beginner">Beginner</option>
+                                        <option value="intermediate">Intermediate</option>
+                                        <option value="advanced">Advanced</option>
+                                    </select>
+                                </div>
+
+                                <div className="filter-group">
+                                    <label>Dietary Preference</label>
+                                    <select
+                                        value={filters.dietary_tags}
+                                        onChange={(e) => setFilters({...filters, dietary_tags: e.target.value})}
+                                    >
+                                        <option value="">Any</option>
+                                        <option value="vegetarian">Vegetarian</option>
+                                        <option value="vegan">Vegan</option>
+                                        <option value="gluten-free">Gluten Free</option>
+                                    </select>
+                                </div>
+
+                                <div className="filter-group">
+                                    <label>Cuisine</label>
+                                    <select
+                                        value={filters.cuisine}
+                                        onChange={(e) => setFilters({...filters, cuisine: e.target.value})}
+                                    >
+                                        <option value="">Any</option>
+                                        <option value="American">American</option>
+                                        <option value="Italian">Italian</option>
+                                        <option value="Asian">Asian</option>
+                                        <option value="Mexican">Mexican</option>
+                                        <option value="Mediterranean">Mediterranean</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="panel">
+                                <h2>Recipe Matches</h2>
+                                
+                                {loading && (
+                                    <div className="loading">
+                                        <div className="spinner"></div>
+                                        <div>Finding delicious recipes...</div>
+                                    </div>
+                                )}
+                                
+                                {!loading && recipes.length === 0 && ingredients.length === 0 && (
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">🍳</div>
+                                        <p>Add some ingredients to get started!</p>
+                                    </div>
+                                )}
+
+                                {!loading && recipes.length === 0 && ingredients.length > 0 && (
+                                    <div className="empty-state">
+                                        <div className="empty-state-icon">🤔</div>
+                                        <p>No recipes found with these ingredients.</p>
+                                        <p style={{fontSize: '0.9rem', marginTop: '10px'}}>
+                                            Try adding more ingredients or adjusting your filters!
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!loading && recipes.map(recipe => (
+                                    <div key={recipe.id} className="recipe-card">
+                                        <div className="recipe-header">
+                                            <div>
+                                                <div className="recipe-title">{recipe.name}</div>
+                                                <div className="recipe-meta">
+                                                    <span className="meta-item">🕒 {recipe.total_time} min</span>
+                                                    <span className="meta-item">👥 {recipe.servings} servings</span>
+                                                    <span className="meta-item">📊 {recipe.skill_level}</span>
+                                                </div>
+                                            </div>
+                                            <div className="match-badge">{recipe.match_percentage}%</div>
+                                        </div>
+
+                                        <div className="progress-bar">
+                                            <div 
+                                                className="progress-fill" 
+                                                style={{width: `${recipe.match_percentage}%`}}
+                                            ></div>
+                                        </div>
+
+                                        <div className="ingredient-lists">
+                                            <div className="ingredient-list">
+                                                <h4>✓ You Have</h4>
+                                                <ul>
+                                                    {recipe.matched_ingredients.map((ing, idx) => (
+                                                        <li key={idx}>{ing}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                            {recipe.missing_ingredients.length > 0 && (
+                                                <div className="ingredient-list">
+                                                    <h4>✗ Still Need</h4>
+                                                    <ul>
+                                                        {recipe.missing_ingredients.map((ing, idx) => (
+                                                            <li key={idx}>{ing}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {recipe.dietary_tags && recipe.dietary_tags.length > 0 && (
+                                            <div className="dietary-tags">
+                                                {recipe.dietary_tags.map((tag, idx) => (
+                                                    <span key={idx} className="tag">{tag}</span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {suggestions.length > 0 && (
+                                <div className="panel suggestions-panel">
+                                    <h3>💡 Shopping Suggestions</h3>
+                                    <p style={{marginBottom: '20px', opacity: 0.9}}>
+                                        Add these to unlock more recipes!
+                                    </p>
+                                    {suggestions.map((sug, idx) => (
+                                        <div key={idx} className="suggestion-item">
+                                            <strong>{sug.name}</strong>
+                                            <div>Unlocks {sug.unlock_count} more recipes</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
