@@ -31,7 +31,7 @@ except Exception as e:
     print("  Falling back to in-memory storage")
     print("  See database/DATABASE_SETUP.md for setup instructions\n")
 
-# import appropriate handlers based on database availability
+# Import appropriate handlers based on database availability
 if USE_DATABASE:
     print(" Using PostgreSQL for data storage")
     from commands.command_handlers import *
@@ -79,6 +79,7 @@ def register():
     result = handle_register_user(
         username=data.get('username'),
         password=data.get('password'),
+        email=data.get('email')
     )
     
     if result['success']:
@@ -285,10 +286,20 @@ def search_recipes():
     ingredient_names = data.get('ingredient_names', [])
     filters = data.get('filters', {})
     
-    results = query_recipes_by_ingredients(ingredient_names, filters)
+    # get user_id from session if logged in (for dietary restriction filtering)
+    user_id = get_current_user_id()
+    
+    print(f"\n🔍 Recipe search request:")
+    print(f"   User ID: {user_id or 'Not logged in'}")
+    print(f"   Ingredients: {ingredient_names}")
+    print(f"   Filters: {filters}")
+    
+    # pass user_id to enable automatic dietary restriction filtering
+    results = query_recipes_by_ingredients(ingredient_names, filters, user_id=user_id)
+    
+    print(f"   Results: {len(results)} recipes found")
     
     # log search if user is logged in
-    user_id = get_current_user_id()
     if user_id:
         handle_log_recipe_search(user_id, ingredient_names, filters, len(results))
     

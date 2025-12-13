@@ -632,7 +632,7 @@
         // ============================================================================
         // If auto-detection fails, uncomment and set your Codespace URL here:
         // const MANUAL_API_URL = 'https://YOUR-CODESPACE-5000.app.github.dev/api';
-        const MANUAL_API_URL = 'https://automatic-winner-5gp6gg77j9gwc47qx-5000.app.github.dev/api';  // Leave as null to use auto-detection
+        const MANUAL_API_URL = 'https://automatic-winner-5gp6gg77j9gwc47qx-5000.app.github.dev/api';  // Leave as null to use auto-detection 
         
         // Auto-detect API URL with improved Codespace support
         function getApiUrl() {
@@ -1203,6 +1203,7 @@
             const [cookingMode, setCookingMode] = useState(null);
             const [favorites, setFavorites] = useState(new Set());
             const [searchMode, setSearchMode] = useState('pantry');  // 'pantry' or 'search'
+            const [userDietaryRestrictions, setUserDietaryRestrictions] = useState([]);  // User's dietary restrictions
 
             useEffect(() => {
                 loadUserData();
@@ -1234,6 +1235,16 @@
                     });
                     const favData = await favResponse.json();
                     setFavorites(new Set(favData.favorites.map(fav => fav.id.toString())));
+                    
+                    // Load profile to get dietary restrictions
+                    const profileResponse = await fetch(`${API_URL}/profile`, {
+                        credentials: 'include'
+                    });
+                    const profileData = await profileResponse.json();
+                    const restrictions = profileData?.profile?.dietary_restrictions || [];
+                    
+                    // Store dietary restrictions for display
+                    setUserDietaryRestrictions(restrictions);
                 } catch (error) {
                     console.error('Failed to load user data:', error);
                 }
@@ -1410,6 +1421,40 @@
                                 ? '✨ Showing recipes from your saved pantry ingredients' 
                                 : '🔍 Search with temporary ingredients to see what you could make'}
                         </p>
+                        
+                        {/* Dietary Restrictions Indicator */}
+                        {userDietaryRestrictions.length > 0 && (
+                            <div style={{
+                                marginTop: '1rem',
+                                padding: '0.75rem',
+                                background: 'linear-gradient(135deg, #FFF5E6, #FFE8CC)',
+                                border: '2px solid #D97642',
+                                borderRadius: '8px',
+                                textAlign: 'center'
+                            }}>
+                                <div style={{fontSize: '0.9rem', fontWeight: '600', color: '#D97642', marginBottom: '0.5rem'}}>
+                                    🍽️ Active Dietary Restrictions
+                                </div>
+                                <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap'}}>
+                                    {userDietaryRestrictions.map((restriction, idx) => (
+                                        <span key={idx} style={{
+                                            padding: '0.25rem 0.75rem',
+                                            background: '#D97642',
+                                            color: 'white',
+                                            borderRadius: '12px',
+                                            fontSize: '0.85rem',
+                                            fontWeight: '600',
+                                            textTransform: 'capitalize'
+                                        }}>
+                                            {restriction}
+                                        </span>
+                                    ))}
+                                </div>
+                                <div style={{fontSize: '0.8rem', color: '#666', marginTop: '0.5rem'}}>
+                                    Recipes violating these restrictions are automatically hidden
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="section">

@@ -1,6 +1,18 @@
 # Query Handlers - Read Side of CQRS with PostgreSQL
 from typing import Dict, Any, List, Optional
 from database.db_connection import execute_query
+import sys
+import os
+
+try:
+    from queries.dietary_restrictions import check_recipe_compatibility
+    DIETARY_FILTERING_AVAILABLE = True
+    print(" Dietary restrictions module loaded successfully")
+except ImportError as e:
+    print(f"  Warning: Dietary restrictions module not available: {e}")
+    DIETARY_FILTERING_AVAILABLE = False
+    def check_recipe_compatibility(ingredients, restrictions):
+        return True, []  # no filtering if module unavailable
 
 def query_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
     # QUERY: get user profile from PostgreSQL
@@ -97,12 +109,12 @@ def query_recipe_by_id(recipe_id: str) -> Optional[Dict[str, Any]]:
         'id': recipe['r_id'],
         'name': recipe['name'],
         'description': recipe.get('desc', ''),
-        'prep_time': recipe.get('time', 0) // 2,  # estimate
+        'prep_time': recipe.get('time', 0) // 2,  # Estimate
         'cook_time': recipe.get('time', 0) // 2,
         'total_time': recipe.get('time', 0),
         'servings': recipe.get('serving', 1),
         'skill_level': recipe.get('skill', 'beginner'),
-        'cuisine': recipe.get('desc', ''),  # using desc as cuisine for now
+        'cuisine': recipe.get('desc', ''),  # Using desc as cuisine for now
         'dietary_tags': dietary_tags,
         'ingredients': [i['name'] for i in (ingredients or [])],
         'equipment': [e['name'] for e in (equipment or [])],
@@ -117,10 +129,27 @@ def query_recipe_by_id(recipe_id: str) -> Optional[Dict[str, Any]]:
         ]
     }
 
-def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
-    # QUERY: search recipes by ingredients with filters from PostgreSQL
+def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str, Any] = None, user_id: str = None) -> List[Dict[str, Any]]:
+    """
+    QUERY: search recipes by ingredients with automatic dietary restriction filtering
+    
+    Args:
+        ingredient_names: List of ingredient names to search
+        filters: Optional dict with max_time, skill_level, cuisine
+        user_id: User ID to automatically apply their dietary restrictions
+    """
     filters = filters or {}
     results = []
+    
+    # get user's dietary restrictions if user_id provided
+    user_dietary_restrictions = []
+    if user_id and DIETARY_FILTERING_AVAILABLE:
+        user_query = "SELECT diet FROM \"user\" WHERE u_id = %s;"
+        user_result = execute_query(user_query, (user_id,), fetch_one=True)
+        if user_result and user_result.get('diet'):
+            # diet is stored as comma-separated string
+            user_dietary_restrictions = [d.strip() for d in user_result['diet'].split(',') if d.strip()]
+            print(f"🍽️ Applying dietary restrictions for user {user_id}: {', '.join(user_dietary_restrictions)}")
     
     # normalize ingredient names
     user_ingredients = [ing.lower().strip() for ing in ingredient_names]
@@ -152,7 +181,8 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
     
     recipes = execute_query(base_query, tuple(params), fetch_all=True)
     
-    # for each recipe, calculate match
+    # for each recipe, calculate match and check dietary restrictions
+    filtered_count = 0
     for recipe in (recipes or []):
         r_id = recipe['id']
         
@@ -165,6 +195,19 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
         """
         recipe_ings = execute_query(ing_query, (r_id,), fetch_all=True)
         recipe_ing_names = [i['name'].lower() for i in (recipe_ings or [])]
+        
+        # apply dietary restriction filtering
+        if user_dietary_restrictions and recipe_ing_names and DIETARY_FILTERING_AVAILABLE:
+            is_compatible, violations = check_recipe_compatibility(
+                recipe_ing_names,
+                user_dietary_restrictions
+            )
+            
+            if not is_compatible:
+                # skip this recipe - it violates user's dietary restrictions
+                print(f"    Filtering out '{recipe['name']}': {[v['reason'] for v in violations]}")
+                filtered_count += 1
+                continue
         
         # get equipment
         equip_query = """
@@ -182,14 +225,6 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
         total = len(recipe_ing_names)
         percentage = (len(matched) / total * 100) if total > 0 else 0
         
-        # apply dietary filter
-        if 'dietary_tags' in filters and filters['dietary_tags']:
-            required_tags = [tag.lower() for tag in filters['dietary_tags']]
-            # Simplified - in production would need proper dietary_tags table
-            desc_lower = (recipe.get('desc') or '').lower()
-            if not all(tag in desc_lower for tag in required_tags):
-                continue
-        
         if percentage > 0:
             results.append({
                 'id': r_id,
@@ -203,12 +238,15 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
                 'servings': recipe.get('servings', 1),
                 'skill_level': recipe.get('skill_level', 'beginner'),
                 'cuisine': recipe.get('desc', ''),
-                'dietary_tags': [],  # needs proper implementation
+                'dietary_tags': [],
                 'equipment': [e['name'] for e in (equipment or [])]
             })
     
     # sort by match percentage
     results.sort(key=lambda x: x['match_percentage'], reverse=True)
+    
+    if filtered_count > 0:
+        print(f" Filtered out {filtered_count} recipes due to dietary restrictions")
     
     return results
 
