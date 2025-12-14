@@ -1380,6 +1380,7 @@
             const [searchIngredients, setSearchIngredients] = useState([]);  // Temporary search mode
             const [currentIngredient, setCurrentIngredient] = useState('');
             const [recipes, setRecipes] = useState([]);
+            const [filteredRecipes, setFilteredRecipes] = useState([]);  // Recipes filtered by dietary restrictions
             const [filters, setFilters] = useState({
                 maxTime: '',
                 skillLevel: '',
@@ -1391,6 +1392,7 @@
             const [searchMode, setSearchMode] = useState('pantry');  // 'pantry' or 'search'
             const [userDietaryRestrictions, setUserDietaryRestrictions] = useState([]);  // User's dietary restrictions
             const [quickPick, setQuickPick] = useState(null);  // "Just Tell Me What To Cook" recommendation
+            const [substitutions, setSubstitutions] = useState({});  // Ingredient substitutions cache
 
             useEffect(() => {
                 loadUserData();
@@ -1513,9 +1515,47 @@
                     });
 
                     const data = await response.json();
-                    setRecipes(data.results);
+                    setRecipes(data.results || []);
+                    setFilteredRecipes(data.filtered_recipes || []);
+                    
+                    // Load substitutions for filtered recipes
+                    if (data.filtered_recipes && data.filtered_recipes.length > 0) {
+                        await loadSubstitutions(data.filtered_recipes, data.dietary_restrictions || []);
+                    }
                 } catch (error) {
                     console.error('Search failed:', error);
+                }
+            };
+
+            const loadSubstitutions = async (filteredRecipes, dietaryRestrictions) => {
+                // Collect all violating ingredients
+                const violatingIngredients = new Set();
+                filteredRecipes.forEach(recipe => {
+                    if (recipe.violations) {
+                        recipe.violations.forEach(v => {
+                            violatingIngredients.add(v.ingredient);
+                        });
+                    }
+                });
+
+                if (violatingIngredients.size === 0) return;
+
+                try {
+                    const response = await fetch(`${API_URL}/substitutions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            ingredients: Array.from(violatingIngredients),
+                            dietary_restrictions: dietaryRestrictions
+                        })
+                    });
+
+                    const data = await response.json();
+                    setSubstitutions(data.substitutions || {});
+                    console.log(`📝 Loaded substitutions for ${Object.keys(data.substitutions || {}).length} ingredients`);
+                } catch (error) {
+                    console.error('Failed to load substitutions:', error);
                 }
             };
 
@@ -1981,6 +2021,106 @@
                             </div>
                         )}
                     </div>
+
+                    {/* Filtered Recipes - With Substitutions */}
+                    {userDietaryRestrictions.length > 0 && filteredRecipes.length > 0 && (
+                        <div className="section">
+                            <h2 style={{color: '#D97642'}}>
+                                🔄 With Substitutions ({filteredRecipes.length})
+                            </h2>
+                            <p style={{color: '#666', marginBottom: '1.5rem'}}>
+                                These recipes violate your dietary restrictions, but you could make them with ingredient substitutions:
+                            </p>
+                            
+                            <div className="recipes-grid">
+                                {filteredRecipes.map((recipe) => (
+                                    <div key={recipe.id} className="recipe-card" style={{border: '2px solid #D97642', background: '#FFF5E6'}}>
+                                        <div className="recipe-header">
+                                            <h3 className="recipe-name">{recipe.name}</h3>
+                                            <div className="match-percentage" style={{background: '#D97642'}}>{recipe.match_percentage}% Match</div>
+                                            <div className="progress-bar">
+                                                <div 
+                                                    className="progress-fill"
+                                                    style={{width: `${recipe.match_percentage}%`, background: '#D97642'}}
+                                                ></div>
+                                            </div>
+                                            <div className="recipe-details">
+                                                ⏱️ {recipe.total_time} min | 
+                                                👨‍🍳 {recipe.skill_level} | 
+                                                🍽️ {recipe.servings} servings
+                                            </div>
+                                            
+                                            {/* Violations and Substitutions */}
+                                            {recipe.violations && recipe.violations.length > 0 && (
+                                                <div style={{
+                                                    marginTop: '1rem',
+                                                    padding: '1rem',
+                                                    background: 'white',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid #E5D5C5'
+                                                }}>
+                                                    <div style={{fontWeight: '600', color: '#D97642', marginBottom: '0.75rem'}}>
+                                                        ⚠️ Ingredients to Substitute:
+                                                    </div>
+                                                    
+                                                    {recipe.violations.map((violation, idx) => {
+                                                        const subs = substitutions[violation.ingredient] || [];
+                                                        return (
+                                                            <div key={idx} style={{marginBottom: '1rem'}}>
+                                                                <div style={{fontWeight: '600', color: '#2C2416', marginBottom: '0.5rem'}}>
+                                                                    ❌ {violation.ingredient} ({violation.restriction})
+                                                                </div>
+                                                                
+                                                                {subs.length > 0 ? (
+                                                                    <div style={{paddingLeft: '1.5rem'}}>
+                                                                        {subs.map((sub, subIdx) => (
+                                                                            <div key={subIdx} style={{
+                                                                                marginBottom: '0.75rem',
+                                                                                padding: '0.75rem',
+                                                                                background: '#F5EDE4',
+                                                                                borderRadius: '6px',
+                                                                                fontSize: '0.9rem'
+                                                                            }}>
+                                                                                <div style={{fontWeight: '600', color: '#4CAF50', marginBottom: '0.25rem'}}>
+                                                                                    ✓ Try: {sub.name}
+                                                                                </div>
+                                                                                <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem'}}>
+                                                                                    <strong>Ratio:</strong> {sub.ratio}
+                                                                                </div>
+                                                                                <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem'}}>
+                                                                                    <strong>Impact:</strong> {sub.flavor_impact}
+                                                                                </div>
+                                                                                <div style={{fontSize: '0.85rem', color: '#666'}}>
+                                                                                    <strong>Tip:</strong> {sub.cooking_notes}
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div style={{paddingLeft: '1.5rem', fontSize: '0.9rem', color: '#999', fontStyle: 'italic'}}>
+                                                                        No substitutions available for this ingredient
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            <div className="recipe-details" style={{marginTop: '1rem'}}>
+                                                ✅ Have: {recipe.matched_ingredients.join(', ')}
+                                            </div>
+                                            {recipe.missing_ingredients.length > 0 && (
+                                                <div className="recipe-details">
+                                                    🛒 Need: {recipe.missing_ingredients.join(', ')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

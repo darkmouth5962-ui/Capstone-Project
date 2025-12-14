@@ -44,7 +44,7 @@ else:
     from queries.query_handlers import *
     from consumers.event_consumers import setup_event_consumers
 
-# initialize event consumers
+# Initialize event consumers
 setup_event_consumers()
 
 # ============================================================================
@@ -251,7 +251,7 @@ def get_ingredients():
 @app.route('/api/ingredients', methods=['POST'])
 @login_required
 def add_ingredient():
-    # add ingredient to current user's pantry"""
+    # add ingredient to current user's pantry
     user_id = get_current_user_id()
     data = request.get_json()
     
@@ -281,7 +281,7 @@ def remove_ingredient(ingredient_id):
 
 @app.route('/api/recipes/search', methods=['POST'])
 def search_recipes():
-    # search recipes (public endpoint, but uses session if available)"""
+    # search recipes (public endpoint, but uses session if available)
     data = request.get_json()
     ingredient_names = data.get('ingredient_names', [])
     filters = data.get('filters', {})
@@ -289,24 +289,45 @@ def search_recipes():
     # get user_id from session if logged in (for dietary restriction filtering)
     user_id = get_current_user_id()
     
-    print(f"\n Recipe search request:")
+    print(f"\n🔍 Recipe search request:")
     print(f"   User ID: {user_id or 'Not logged in'}")
     print(f"   Ingredients: {ingredient_names}")
     print(f"   Filters: {filters}")
     
     # pass user_id to enable automatic dietary restriction filtering
-    results = query_recipes_by_ingredients(ingredient_names, filters, user_id=user_id)
+    search_results = query_recipes_by_ingredients(ingredient_names, filters, user_id=user_id)
     
-    print(f"   Results: {len(results)} recipes found")
-    
-    # log search if user is logged in
-    if user_id:
-        handle_log_recipe_search(user_id, ingredient_names, filters, len(results))
-    
-    return jsonify({
-        'results': results,
-        'count': len(results)
-    }), 200
+    # handle both old format (list) and new format (dict with compatible/filtered)
+    if isinstance(search_results, dict):
+        compatible = search_results.get('compatible', [])
+        filtered = search_results.get('filtered', [])
+        dietary_restrictions = search_results.get('dietary_restrictions', [])
+        
+        print(f"   Compatible results: {len(compatible)} recipes")
+        print(f"   Filtered results: {len(filtered)} recipes")
+        
+        # log search if user is logged in
+        if user_id:
+            handle_log_recipe_search(user_id, ingredient_names, filters, len(compatible))
+        
+        return jsonify({
+            'results': compatible,
+            'filtered_recipes': filtered,
+            'dietary_restrictions': dietary_restrictions,
+            'count': len(compatible),
+            'filtered_count': len(filtered)
+        }), 200
+    else:
+        # old format compatibility
+        print(f"   Results: {len(search_results)} recipes found")
+        
+        if user_id:
+            handle_log_recipe_search(user_id, ingredient_names, filters, len(search_results))
+        
+        return jsonify({
+            'results': search_results,
+            'count': len(search_results)
+        }), 200
 
 @app.route('/api/recipes/<recipe_id>', methods=['GET'])
 def get_recipe(recipe_id):
@@ -462,6 +483,69 @@ def get_user_analytics_endpoint():
     }), 200
 
 # ============================================================================
+# SUBSTITUTIONS ENDPOINTS
+# ============================================================================
+
+@app.route('/api/substitutions/<ingredient>', methods=['GET'])
+def get_substitutions(ingredient):
+    # get substitutions for an ingredient based on dietary restrictions
+    from substitutions import get_substitutions_for_ingredient
+    
+    # get dietary restrictions from query params or session
+    user_id = get_current_user_id()
+    dietary_restrictions = []
+    
+    if user_id:
+        # get from user profile
+        from queries.query_handlers import query_user_profile
+        profile = query_user_profile(user_id)
+        if profile:
+            dietary_restrictions = profile.get('dietary_restrictions', [])
+    else:
+        # get from query params if not logged in
+        restrictions_param = request.args.get('restrictions', '')
+        if restrictions_param:
+            dietary_restrictions = [r.strip() for r in restrictions_param.split(',')]
+    
+    substitutes = get_substitutions_for_ingredient(ingredient, dietary_restrictions)
+    
+    return jsonify({
+        'ingredient': ingredient,
+        'dietary_restrictions': dietary_restrictions,
+        'substitutes': substitutes,
+        'count': len(substitutes)
+    }), 200
+
+@app.route('/api/substitutions', methods=['POST'])
+def get_multiple_substitutions():
+    # get substitutions for multiple ingredients
+    from substitutions import get_substitutions_for_ingredient
+    
+    data = request.get_json()
+    ingredients = data.get('ingredients', [])
+    dietary_restrictions = data.get('dietary_restrictions', [])
+    
+    # if no restrictions provided, try to get from user profile
+    if not dietary_restrictions:
+        user_id = get_current_user_id()
+        if user_id:
+            from queries.query_handlers import query_user_profile
+            profile = query_user_profile(user_id)
+            if profile:
+                dietary_restrictions = profile.get('dietary_restrictions', [])
+    
+    results = {}
+    for ingredient in ingredients:
+        substitutes = get_substitutions_for_ingredient(ingredient, dietary_restrictions)
+        if substitutes:
+            results[ingredient] = substitutes
+    
+    return jsonify({
+        'dietary_restrictions': dietary_restrictions,
+        'substitutions': results
+    }), 200
+
+# ============================================================================
 # COOKING TERMS ENDPOINTS
 # ============================================================================
 
@@ -544,7 +628,7 @@ if __name__ == '__main__':
         print("Features:  User Accounts | Profiles | Persistence")
     else:
         print("Storage: In-Memory (temporary)")
-        print("Features Lost: User Accounts (PostgreSQL required)")
+        print("Features Lost:  User Accounts (PostgreSQL required)")
     print("=" * 70 + "\n")
     
     app.run(debug=True, host='0.0.0.0', port=5000)

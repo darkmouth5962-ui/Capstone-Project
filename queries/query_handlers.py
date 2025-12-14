@@ -12,7 +12,7 @@ except ImportError as e:
     print(f"  Warning: Dietary restrictions module not available: {e}")
     DIETARY_FILTERING_AVAILABLE = False
     def check_recipe_compatibility(ingredients, restrictions):
-        return True, []  # no filtering if module unavailable
+        return True, []  # No filtering if module unavailable
 
 def query_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
     # QUERY: get user profile from PostgreSQL
@@ -96,7 +96,7 @@ def query_recipe_by_id(recipe_id: str) -> Optional[Dict[str, Any]]:
     """
     steps = execute_query(steps_query, (int(recipe_id),), fetch_all=True)
     
-    # determine dietary tags (simplified - would need more complex logic in production)
+    # determine dietary tags
     dietary_tags = []
     if recipe.get('desc'):
         desc_lower = recipe['desc'].lower()
@@ -137,9 +137,13 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
         ingredient_names: List of ingredient names to search
         filters: Optional dict with max_time, skill_level, cuisine
         user_id: User ID to automatically apply their dietary restrictions
+    
+    Returns:
+        Dict with 'compatible' recipes and 'filtered' recipes (with violation info)
     """
     filters = filters or {}
-    results = []
+    compatible_results = []
+    filtered_results = []
     
     # get user's dietary restrictions if user_id provided
     user_dietary_restrictions = []
@@ -197,6 +201,9 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
         recipe_ing_names = [i['name'].lower() for i in (recipe_ings or [])]
         
         # apply dietary restriction filtering
+        is_compatible = True
+        violations = []
+        
         if user_dietary_restrictions and recipe_ing_names and DIETARY_FILTERING_AVAILABLE:
             is_compatible, violations = check_recipe_compatibility(
                 recipe_ing_names,
@@ -204,10 +211,8 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
             )
             
             if not is_compatible:
-                # skip this recipe - it violates user's dietary restrictions
-                print(f"    Filtering out '{recipe['name']}': {[v['reason'] for v in violations]}")
                 filtered_count += 1
-                continue
+                print(f"   ❌ Filtering out '{recipe['name']}': {[v['reason'] for v in violations]}")
         
         # get equipment
         equip_query = """
@@ -226,7 +231,7 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
         percentage = (len(matched) / total * 100) if total > 0 else 0
         
         if percentage > 0:
-            results.append({
+            recipe_data = {
                 'id': r_id,
                 'name': recipe['name'],
                 'match_percentage': round(percentage, 1),
@@ -240,15 +245,35 @@ def query_recipes_by_ingredients(ingredient_names: List[str], filters: Dict[str,
                 'cuisine': recipe.get('desc', ''),
                 'dietary_tags': [],
                 'equipment': [e['name'] for e in (equipment or [])]
-            })
+            }
+            
+            if is_compatible:
+                compatible_results.append(recipe_data)
+            else:
+                # Add violation info for filtered recipes
+                recipe_data['violations'] = [
+                    {
+                        'ingredient': v['ingredient'],
+                        'restriction': v['restriction']
+                    }
+                    for v in violations
+                ]
+                filtered_results.append(recipe_data)
     
-    # sort by match percentage
-    results.sort(key=lambda x: x['match_percentage'], reverse=True)
+    # sort compatible results by match percentage
+    compatible_results.sort(key=lambda x: x['match_percentage'], reverse=True)
+    
+    # sort filtered results by match percentage too
+    filtered_results.sort(key=lambda x: x['match_percentage'], reverse=True)
     
     if filtered_count > 0:
         print(f" Filtered out {filtered_count} recipes due to dietary restrictions")
     
-    return results
+    return {
+        'compatible': compatible_results,
+        'filtered': filtered_results,
+        'dietary_restrictions': user_dietary_restrictions
+    }
 
 def query_user_favorites(user_id: str) -> List[Dict[str, Any]]:
     # QUERY: get user's favorite recipes from PostgreSQL
